@@ -37,15 +37,10 @@ jobs:
         IMAGEMAGICK_BINARY=/usr/bin/convert
         EOF
 
-    - name: Google認証情報を設定
-      env:
-        GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
-      run: |
-        echo "$GOOGLE_CREDENTIALS_JSON" > credentials.json
-
     - name: 動画生成実行
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
         BACKGROUND_IMAGE_ID: ${{ secrets.BACKGROUND_IMAGE_ID }}
         CHARACTER1_IMAGE_ID: ${{ secrets.CHARACTER1_IMAGE_ID }}
         CHARACTER2_IMAGE_ID: ${{ secrets.CHARACTER2_IMAGE_ID }}
