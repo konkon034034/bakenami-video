@@ -31,13 +31,18 @@ jobs:
 
     - name: Google認証情報を設定
       env:
-        GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
       run: |
-        echo "$GOOGLE_CREDENTIALS" > credentials.json
+        echo "$GOOGLE_CREDENTIALS_JSON" > credentials.json
 
     - name: 動画生成実行
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        YOUTUBE_CLIENT_SECRETS: ${{ secrets.YOUTUBE_CLIENT_SECRETS }}
+        BACKGROUND_IMAGE_ID: ${{ secrets.BACKGROUND_IMAGE_ID }}
+        CHARACTER1_IMAGE_ID: ${{ secrets.CHARACTER1_IMAGE_ID }}
+        CHARACTER2_IMAGE_ID: ${{ secrets.CHARACTER2_IMAGE_ID }}
+        DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}
+        SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
+        YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
       run: |
         python bakenami_generator.py
