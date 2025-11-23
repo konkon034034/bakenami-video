@@ -26,14 +26,14 @@ sys.stdout.flush()
 
 # ================== 環境変数・認証情報 ==================
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-GOOGLE_CREDENTIALS_JSON = os.getenv('GOOGLE_CREDENTIALS_JSON')  # JSON文字列
+GOOGLE_CREDENTIALS_JSON = os.getenv('GOOGLE_CREDENTIALS_JSON')
 SPREADSHEET_ID = os.getenv('SPREADSHEET_ID')
 YOUTUBE_CHANNEL_ID = os.getenv('YOUTUBE_CHANNEL_ID')
-DRIVE_FOLDER_ID = os.getenv('DRIVE_FOLDER_ID')  # 素材保管用フォルダ
-BGM_FILE_ID = os.getenv('BGM_FILE_ID')  # BGMファイルのID
-BACKGROUND_IMAGE_ID = os.getenv('BACKGROUND_IMAGE_ID')  # 背景画像ID
-CHARACTER1_IMAGE_ID = os.getenv('CHARACTER1_IMAGE_ID')  # キャラ1画像ID
-CHARACTER2_IMAGE_ID = os.getenv('CHARACTER2_IMAGE_ID')  # キャラ2画像ID
+DRIVE_FOLDER_ID = os.getenv('DRIVE_FOLDER_ID')
+BGM_FILE_ID = os.getenv('BGM_FILE_ID')
+BACKGROUND_IMAGE_ID = os.getenv('BACKGROUND_IMAGE_ID')
+CHARACTER1_IMAGE_ID = os.getenv('CHARACTER1_IMAGE_ID')
+CHARACTER2_IMAGE_ID = os.getenv('CHARACTER2_IMAGE_ID')
 
 # ワークディレクトリ
 WORK_DIR = Path('/tmp/bakenami_work')
@@ -42,48 +42,37 @@ WORK_DIR.mkdir(exist_ok=True)
 
 def create_text_clip(text, fontsize=40, color='white', bg_color='black', 
                      duration=1.0, size=(1920, 1080), position='bottom'):
-    """PILでテキスト画像を作成してImageClipに変換（TextClipの代替）"""
+    """PILでテキスト画像を作成してImageClipに変換"""
     
-    # 画像作成
     img = Image.new('RGBA', size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     
-    # フォント設定
     try:
         font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", fontsize)
     except Exception as e:
-        print(f"⚠ フォント読み込み失敗、デフォルトフォント使用: {e}")
+        print(f"⚠ フォント読み込み失敗、デフォルトフォント使用: {e}", flush=True)
         font = ImageFont.load_default()
     
-    # テキストのサイズを取得
     bbox = draw.textbbox((0, 0), text, font=font)
     text_width = bbox[2] - bbox[0]
     text_height = bbox[3] - bbox[1]
     
-    # テキストの配置計算
     padding = 20
     box_width = min(text_width + padding * 2, size[0] - 100)
     box_height = text_height + padding * 2
     
-    # 位置によって配置を変える
     if position == 'bottom':
         x = (size[0] - box_width) // 2
         y = size[1] - box_height - 50
-    else:  # center
+    else:
         x = (size[0] - box_width) // 2
         y = (size[1] - box_height) // 2
     
-    # 背景矩形（半透明の黒）
-    draw.rectangle(
-        [x, y, x + box_width, y + box_height],
-        fill=(0, 0, 0, 200)
-    )
+    draw.rectangle([x, y, x + box_width, y + box_height], fill=(0, 0, 0, 200))
     
-    # テキスト描画（複数行対応）
     text_x = x + padding
     text_y = y + padding
     
-    # 長いテキストは折り返し
     max_width = box_width - padding * 2
     lines = []
     words = text.split()
@@ -104,15 +93,12 @@ def create_text_clip(text, fontsize=40, color='white', bg_color='black',
     if current_line:
         lines.append(current_line)
     
-    # 各行を描画
     for i, line in enumerate(lines):
         draw.text((text_x, text_y + i * (text_height + 5)), line.strip(), font=font, fill=color)
     
-    # 一時ファイルとして保存
     temp_path = WORK_DIR / f"text_temp_{abs(hash(text))}.png"
     img.save(temp_path)
     
-    # ImageClipとして返す
     return ImageClip(str(temp_path)).set_duration(duration).set_position(('center', 'bottom'))
 
 
@@ -130,7 +116,6 @@ class BakenamiVideoGenerator:
         
         print(f"📅 タイムスタンプ: {self.timestamp}", flush=True)
         
-        # 環境変数の確認
         print("\n🔍 環境変数チェック:", flush=True)
         print(f"  GEMINI_API_KEY: {'✅ 設定済み' if GEMINI_API_KEY else '❌ 未設定'}", flush=True)
         print(f"  GOOGLE_CREDENTIALS_JSON: {'✅ 設定済み' if GOOGLE_CREDENTIALS_JSON else '❌ 未設定'}", flush=True)
@@ -141,7 +126,6 @@ class BakenamiVideoGenerator:
         print(f"  CHARACTER2_IMAGE_ID: {'✅ 設定済み' if CHARACTER2_IMAGE_ID else '❌ 未設定'}", flush=True)
         print(f"  BGM_FILE_ID: {'✅ 設定済み' if BGM_FILE_ID else '❌ 未設定'}", flush=True)
         
-        # Google API認証
         print("\n🔐 Google API認証開始...", flush=True)
         try:
             self.setup_google_services()
@@ -152,11 +136,10 @@ class BakenamiVideoGenerator:
             traceback.print_exc()
             raise
         
-        # Gemini API設定
         print("\n🤖 Gemini API設定開始...", flush=True)
         try:
             genai.configure(api_key=GEMINI_API_KEY)
-         self.model = genai.GenerativeModel('gemini-1.5-flash-latest')
+            self.model = genai.GenerativeModel('gemini-1.5-flash-latest')
             print("✅ Gemini API設定成功", flush=True)
         except Exception as e:
             print(f"❌ Gemini API設定失敗: {e}", flush=True)
@@ -181,18 +164,15 @@ class BakenamiVideoGenerator:
             ]
         )
         
-        # スプレッドシート
         print("  📊 スプレッドシート接続中...", flush=True)
         self.gc = gspread.authorize(self.credentials)
         self.sheet = self.gc.open_by_key(SPREADSHEET_ID).sheet1
         print(f"  ✅ スプレッドシート接続成功: {SPREADSHEET_ID[:10]}...", flush=True)
         
-        # Google Drive
         print("  💾 Google Drive接続中...", flush=True)
         self.drive_service = build('drive', 'v3', credentials=self.credentials)
         print("  ✅ Google Drive接続成功", flush=True)
         
-        # YouTube
         print("  📺 YouTube接続中...", flush=True)
         self.youtube_service = build('youtube', 'v3', credentials=self.credentials)
         print("  ✅ YouTube接続成功", flush=True)
@@ -205,14 +185,12 @@ class BakenamiVideoGenerator:
             **kwargs
         })
         
-        # 新規行追加または既存行更新
         if not hasattr(self, 'sheet_row'):
             self.sheet_row = len(self.sheet.get_all_values()) + 1
             self.sheet.append_row([
                 self.timestamp, status, '', '', '', '', '', ''
             ])
         else:
-            # ステータス更新
             self.sheet.update_cell(self.sheet_row, 2, status)
     
     def download_from_drive(self, file_id, save_path):
@@ -277,7 +255,6 @@ SNSやニュースサイトでの視聴者の反応をまとめてください�
         search_result = response.text
         self.log_to_sheet('検索完了', search_result=search_result[:500])
         
-        # スプレッドシートに保存
         self.sheet.update_cell(self.sheet_row, 3, search_result[:1000])
         
         print("✅ 検索完了", flush=True)
@@ -331,9 +308,7 @@ SNSやニュースサイトでの視聴者の反応をまとめてください�
         """音声生成（Gemini TTS）"""
         print("\n=== STEP 3: 音声生成 ===", flush=True)
         
-        # JSONパース
         try:
-            # マークダウンコードブロックを除去
             clean_data = script_data.strip()
             if clean_data.startswith('```json'):
                 clean_data = clean_data[7:]
@@ -346,7 +321,6 @@ SNSやニュースサイトでの視聴者の反応をまとめてください�
             script_lines = script_json['script']
             print(f"  📝 台本: {len(script_lines)}行", flush=True)
         except Exception as e:
-            # パースエラー時は簡易処理
             print(f"⚠ JSON解析失敗、簡易モードで処理: {e}", flush=True)
             script_lines = [
                 {"speaker": "タクヤ", "text": "視聴者の皆さんこんにちは！"},
@@ -359,7 +333,6 @@ SNSやニュースサイトでの視聴者の反応をまとめてください�
             speaker = line['speaker']
             text = line['text']
             
-            # 音声生成プロンプト
             voice_config = "男性、低音、落ち着いた声" if speaker == "ケンジ" else "男性、高音、明るい声"
             
             audio_prompt = f"""
@@ -368,7 +341,6 @@ SNSやニュースサイトでの視聴者の反応をまとめてください�
 """
             
             try:
-                # Gemini音声生成
                 response = self.model.generate_content(
                     audio_prompt,
                     generation_config=genai.types.GenerationConfig(
@@ -376,7 +348,6 @@ SNSやニュースサイトでの視聴者の反応をまとめてください�
                     )
                 )
                 
-                # 音声保存
                 audio_path = WORK_DIR / f"audio_{i:03d}_{speaker}.wav"
                 with open(audio_path, 'wb') as f:
                     f.write(response.parts[0].inline_data.data)
@@ -384,7 +355,7 @@ SNSやニュースサイトでの視聴者の反応をまとめてください�
                 audio_files.append(audio_path)
                 print(f"  ✓ 音声生成: {speaker} ({len(text)}文字)", flush=True)
                 
-                time.sleep(1)  # レート制限対策
+                time.sleep(1)
                 
             except Exception as e:
                 print(f"  ⚠ 音声生成エラー: {speaker} - {e}", flush=True)
@@ -392,7 +363,6 @@ SNSやニュースサイトでの視聴者の反応をまとめてください�
         if not audio_files:
             raise Exception("音声ファイルが1つも生成されませんでした")
         
-        # 音声結合
         combined_audio_path = WORK_DIR / "combined_audio.wav"
         self.combine_audio_files(audio_files, combined_audio_path)
         
@@ -409,7 +379,7 @@ SNSやニュースサイトでの視聴者の反応をまとめてください�
         for audio_file in audio_files:
             audio = AudioSegment.from_wav(audio_file)
             combined += audio
-            combined += AudioSegment.silent(duration=500)  # 0.5秒の間
+            combined += AudioSegment.silent(duration=500)
         
         combined.export(output_path, format='wav')
         print(f"✓ 音声結合完了: {output_path}", flush=True)
@@ -418,7 +388,6 @@ SNSやニュースサイトでの視聴者の反応をまとめてください�
         """字幕データ生成（音声と台本の同期）"""
         print("\n=== STEP 4: 字幕生成 ===", flush=True)
         
-        # 簡易タイミング計算（1文字0.2秒と仮定）
         subtitles = []
         current_time = 0.0
         
@@ -443,7 +412,6 @@ SNSやニュースサイトでの視聴者の反応をまとめてください�
         """動画生成"""
         print("\n=== STEP 5: 動画生成 ===", flush=True)
         
-        # 素材ダウンロード
         bg_image_path = WORK_DIR / "background.png"
         char1_image_path = WORK_DIR / "character1.png"
         char2_image_path = WORK_DIR / "character2.png"
@@ -455,30 +423,25 @@ SNSやニュースサイトでの視聴者の反応をまとめてください�
         char2_exists = self.download_from_drive(CHARACTER2_IMAGE_ID, char2_image_path)
         bgm_exists = self.download_from_drive(BGM_FILE_ID, bgm_path)
         
-        # 音声読み込み
         print("  🎵 音声読み込み中...", flush=True)
         audio_clip = AudioFileClip(str(audio_path))
         video_duration = audio_clip.duration
         print(f"  ✓ 動画長さ: {video_duration:.1f}秒", flush=True)
         
-        # 背景画像（なければ黒背景）
         if bg_exists:
             bg_clip = ImageClip(str(bg_image_path)).set_duration(video_duration)
         else:
-            # 黒背景を作成
             from PIL import Image as PILImage
             black_img = PILImage.new('RGB', (1920, 1080), color='black')
             black_img_path = WORK_DIR / "black_bg.png"
             black_img.save(black_img_path)
             bg_clip = ImageClip(str(black_img_path)).set_duration(video_duration)
         
-        # BGM（音量調整）
         if bgm_exists:
             try:
                 print("  🎶 BGM処理中...", flush=True)
                 bgm_clip = AudioFileClip(str(bgm_path)).volumex(0.2)
                 bgm_clip = bgm_clip.set_duration(video_duration)
-                # 音声とBGMをミックス
                 from moviepy.audio.AudioClip import CompositeAudioClip
                 final_audio = CompositeAudioClip([audio_clip, bgm_clip])
                 print("  ✓ BGM追加完了", flush=True)
@@ -488,7 +451,6 @@ SNSやニュースサイトでの視聴者の反応をまとめてください�
         else:
             final_audio = audio_clip
         
-        # 字幕クリップ作成（PILで生成）
         print("  💬 字幕生成中...", flush=True)
         subtitle_clips = []
         for i, sub in enumerate(subtitles):
@@ -509,7 +471,6 @@ SNSやニュースサイトでの視聴者の反応をまとめてください�
         
         print(f"  ✓ 字幕生成完了: {len(subtitle_clips)}個", flush=True)
         
-        # キャラクター画像（話者によって表示切替）
         print("  👤 キャラクター画像処理中...", flush=True)
         char_clips = []
         for sub in subtitles:
@@ -533,13 +494,11 @@ SNSやニュースサイトでの視聴者の反応をまとめてください�
         
         print(f"  ✓ キャラクター画像完了: {len(char_clips)}個", flush=True)
         
-        # 合成
         print("  🎬 動画合成中...", flush=True)
         all_clips = [bg_clip] + char_clips + subtitle_clips
         video = CompositeVideoClip(all_clips)
         video = video.set_audio(final_audio)
         
-        # 動画出力
         print("  💾 動画出力中（時間がかかります）...", flush=True)
         output_video_path = WORK_DIR / "bakenami_video.mp4"
         video.write_videofile(
@@ -549,7 +508,7 @@ SNSやニュースサイトでの視聴者の反応をまとめてください�
             audio_codec='aac',
             threads=4,
             preset='medium',
-            logger=None  # 詳細ログを抑制
+            logger=None
         )
         
         self.log_to_sheet('動画生成完了', duration=video_duration)
@@ -588,19 +547,15 @@ YouTube動画のタイトルと説明文を生成してください。
         """サムネイル画像生成"""
         print("\n=== STEP 7: サムネイル生成 ===", flush=True)
         
-        # 背景画像を使用
         bg_image_path = WORK_DIR / "background.png"
         
         if bg_image_path.exists():
             img = Image.open(bg_image_path)
         else:
-            # なければ青背景を作成
             img = Image.new('RGB', (1280, 720), color='#4169E1')
         
-        # リサイズ（YouTube推奨サイズ）
         img = img.resize((1280, 720))
         
-        # テキスト追加
         draw = ImageDraw.Draw(img)
         
         try:
@@ -613,7 +568,6 @@ YouTube動画のタイトルと説明文を生成してください。
         text1 = "朝ドラ「ばけばけ」"
         text2 = "今日の反応"
         
-        # テキスト配置
         bbox1 = draw.textbbox((0, 0), text1, font=font_large)
         bbox2 = draw.textbbox((0, 0), text2, font=font_small)
         
@@ -622,13 +576,11 @@ YouTube動画のタイトルと説明文を生成してください。
         x2 = (img.width - (bbox2[2] - bbox2[0])) // 2
         y2 = 200
         
-        # 縁取り（黒）
         for offset_x in [-3, 0, 3]:
             for offset_y in [-3, 0, 3]:
                 draw.text((x1 + offset_x, y1 + offset_y), text1, font=font_large, fill='black')
                 draw.text((x2 + offset_x, y2 + offset_y), text2, font=font_small, fill='black')
         
-        # メインテキスト（黄色）
         draw.text((x1, y1), text1, font=font_large, fill='yellow')
         draw.text((x2, y2), text2, font=font_small, fill='yellow')
         
@@ -644,7 +596,6 @@ YouTube動画のタイトルと説明文を生成してください。
         print("\n=== STEP 8: YouTubeアップロード ===", flush=True)
         
         try:
-            # マークダウンコードブロックを除去
             clean_metadata = metadata.strip()
             if clean_metadata.startswith('```json'):
                 clean_metadata = clean_metadata[7:]
@@ -667,7 +618,7 @@ YouTube動画のタイトルと説明文を生成してください。
                 'title': metadata_json['title'],
                 'description': metadata_json['description'],
                 'tags': metadata_json.get('tags', ["ばけばけ", "朝ドラ"]),
-                'categoryId': '24'  # エンターテイメント
+                'categoryId': '24'
             },
             'status': {
                 'privacyStatus': 'public',
@@ -677,7 +628,6 @@ YouTube動画のタイトルと説明文を生成してください。
         
         print(f"  📺 動画アップロード中: {metadata_json['title']}", flush=True)
         
-        # 動画アップロード
         media = MediaFileUpload(video_path, chunksize=-1, resumable=True)
         request = self.youtube_service.videos().insert(
             part='snippet,status',
@@ -691,7 +641,6 @@ YouTube動画のタイトルと説明文を生成してください。
         
         print(f"  ✓ 動画アップロード完了: {video_id}", flush=True)
         
-        # サムネイルアップロード
         try:
             print("  🖼️ サムネイルアップロード中...", flush=True)
             self.youtube_service.thumbnails().set(
@@ -718,32 +667,23 @@ YouTube動画のタイトルと説明文を生成してください。
             
             start_time = time.time()
             
-            # STEP 1: ネット反応検索
             self.log_to_sheet('実行中')
             search_result = self.search_bakenami_reactions()
             
-            # STEP 2: 台本生成
             script_data = self.generate_script(search_result)
             
-            # STEP 3: 音声生成
             audio_path, script_lines = self.generate_audio(script_data)
             
-            # STEP 4: 字幕生成
             subtitles = self.generate_subtitles(audio_path, script_lines)
             
-            # STEP 5: 動画生成
             video_path = self.create_video(audio_path, subtitles)
             
-            # STEP 6: メタデータ生成
             metadata = self.generate_metadata(search_result)
             
-            # STEP 7: サムネイル生成
             thumbnail_path = self.generate_thumbnail()
             
-            # STEP 8: YouTubeアップロード
             video_url = self.upload_to_youtube(video_path, metadata, thumbnail_path)
             
-            # 完了
             elapsed_time = time.time() - start_time
             self.log_to_sheet('完了', elapsed_time=f"{elapsed_time:.1f}秒")
             self.sheet.update_cell(self.sheet_row, 7, f"{elapsed_time:.1f}秒")
