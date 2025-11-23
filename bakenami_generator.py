@@ -156,7 +156,7 @@ class BakenamiVideoGenerator:
         print("\n🤖 Gemini API設定開始...", flush=True)
         try:
             genai.configure(api_key=GEMINI_API_KEY)
-            self.model = genai.GenerativeModel('gemini-1.5-flash-latest')
+         self.model = genai.GenerativeModel('gemini-1.5-flash-latest')
             print("✅ Gemini API設定成功", flush=True)
         except Exception as e:
             print(f"❌ Gemini API設定失敗: {e}", flush=True)
