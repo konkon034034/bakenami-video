@@ -23,7 +23,6 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y imagemagick ffmpeg
-        # ImageMagickのポリシーを修正（PDF/動画処理を許可）
         sudo sed -i 's/rights="none" pattern="PDF"/rights="read|write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml
 
     - name: 依存関係インストール
@@ -53,5 +52,6 @@ jobs:
         DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}
         SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
         YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
+        BGM_FILE_ID: ${{ secrets.BGM_FILE_ID }}
       run: |
         python bakenami_generator.py
