@@ -1,1 +1,55 @@
+name: 朝ドラ「ばけばけ」動画自動生成
 
+on:
+  schedule:
+    # 毎朝9時（JST）に実行 = UTC 0時
+    - cron: '0 0 * * *'
+  workflow_dispatch:  # 手動実行も可能
+
+jobs:
+  generate-video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+      
+      - name: Pythonセットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: 依存関係インストール
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg imagemagick
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Google認証情報を設定
+        env:
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+        run: |
+          echo "$GOOGLE_CREDENTIALS_JSON" > /tmp/google_credentials.json
+      
+      - name: 動画生成実行
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
+          YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
+          DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}
+          BGM_FILE_ID: ${{ secrets.BGM_FILE_ID }}
+          BACKGROUND_IMAGE_ID: ${{ secrets.BACKGROUND_IMAGE_ID }}
+          CHARACTER1_IMAGE_ID: ${{ secrets.CHARACTER1_IMAGE_ID }}
+          CHARACTER2_IMAGE_ID: ${{ secrets.CHARACTER2_IMAGE_ID }}
+        run: |
+          python bakenami_generator.py
+      
+      - name: 実行結果を通知（オプション）
+        if: always()
+        run: |
+          echo "動画生成ジョブが完了しました"
+          # Slackなどに通知する場合はここに追加
