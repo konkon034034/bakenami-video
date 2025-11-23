@@ -7,6 +7,7 @@ import os
 import json
 import time
 import sys
+import re
 from datetime import datetime
 from pathlib import Path
 import google.generativeai as genai
@@ -100,6 +101,34 @@ def create_text_clip(text, fontsize=40, color='white', bg_color='black',
     img.save(temp_path)
     
     return ImageClip(str(temp_path)).set_duration(duration).set_position(('center', 'bottom'))
+
+
+def call_gemini_with_retry(model, prompt, max_retries=3, generation_config=None):
+    """Gemini APIを呼び出し、レート制限時は自動リトライ"""
+    for attempt in range(max_retries):
+        try:
+            if generation_config:
+                response = model.generate_content(prompt, generation_config=generation_config)
+            else:
+                response = model.generate_content(prompt)
+            return response
+        except Exception as e:
+            error_str = str(e)
+            if '429' in error_str and attempt < max_retries - 1:
+                # レート制限エラーの場合
+                match = re.search(r'retry in (\d+(?:\.\d+)?)', error_str)
+                if match:
+                    wait_time = float(match.group(1)) + 5
+                else:
+                    wait_time = 60
+                
+                print(f"⚠ レート制限エラー（試行 {attempt + 1}/{max_retries}）", flush=True)
+                print(f"  {wait_time:.0f}秒待機してリトライします...", flush=True)
+                time.sleep(wait_time)
+            else:
+                raise
+    
+    raise Exception("レート制限により処理に失敗しました。しばらく待ってから再実行してください。")
 
 
 class BakenamiVideoGenerator:
@@ -250,11 +279,10 @@ SNSやニュースサイトでの視聴者の反応をまとめてください�
 }
 """
         
-        response = self.model.generate_content(search_prompt)
-        
+        response = call_gemini_with_retry(self.model, search_prompt)
         search_result = response.text
-        self.log_to_sheet('検索完了', search_result=search_result[:500])
         
+        self.log_to_sheet('検索完了', search_result=search_result[:500])
         self.sheet.update_cell(self.sheet_row, 3, search_result[:1000])
         
         print("✅ 検索完了", flush=True)
@@ -295,7 +323,7 @@ SNSやニュースサイトでの視聴者の反応をまとめてください�
 }}
 """
         
-        response = self.model.generate_content(script_prompt)
+        response = call_gemini_with_retry(self.model, script_prompt)
         script_data = response.text
         
         self.log_to_sheet('台本生成完了')
@@ -341,7 +369,8 @@ SNSやニュースサイトでの視聴者の反応をまとめてください�
 """
             
             try:
-                response = self.model.generate_content(
+                response = call_gemini_with_retry(
+                    self.model,
                     audio_prompt,
                     generation_config=genai.types.GenerationConfig(
                         response_mime_type="audio/wav"
@@ -355,7 +384,7 @@ SNSやニュースサイトでの視聴者の反応をまとめてください�
                 audio_files.append(audio_path)
                 print(f"  ✓ 音声生成: {speaker} ({len(text)}文字)", flush=True)
                 
-                time.sleep(1)
+                time.sleep(2)  # レート制限対策
                 
             except Exception as e:
                 print(f"  ⚠ 音声生成エラー: {speaker} - {e}", flush=True)
@@ -534,7 +563,7 @@ YouTube動画のタイトルと説明文を生成してください。
 }}
 """
         
-        response = self.model.generate_content(metadata_prompt)
+        response = call_gemini_with_retry(self.model, metadata_prompt)
         metadata = response.text
         
         self.log_to_sheet('メタデータ生成完了')
