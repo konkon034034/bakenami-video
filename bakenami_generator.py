@@ -168,9 +168,9 @@ class BakenamiVideoGenerator:
         print("\n🤖 Gemini API設定開始...", flush=True)
         try:
             genai.configure(api_key=GEMINI_API_KEY)
-            # ✅ 推奨：最も安定したモデル指定
-            self.model = genai.GenerativeModel('models/gemini-1.5-flash-002')
-            print("✅ Gemini API設定成功 (モデル: gemini-1.5-flash-002)", flush=True)
+            # ✅ 修正: 正しいモデル名を使用
+            self.model = genai.GenerativeModel('gemini-1.5-flash')
+            print("✅ Gemini API設定成功 (モデル: gemini-1.5-flash)", flush=True)
         except Exception as e:
             print(f"❌ Gemini API設定失敗: {e}", flush=True)
             import traceback
