@@ -131,6 +131,45 @@ def call_gemini_with_retry(model, prompt, max_retries=3, generation_config=None)
     raise Exception("レート制限により処理に失敗しました。しばらく待ってから再実行してください。")
 
 
+def find_working_model():
+    """利用可能なGeminiモデルを見つける"""
+    print("🔍 利用可能なモデルを探しています...", flush=True)
+    
+    # 試すモデル名のリスト（優先順）
+    candidate_models = [
+        'gemini-1.5-flash-latest',
+        'gemini-1.5-flash-001', 
+        'gemini-1.5-flash',
+        'gemini-1.5-pro-latest',
+        'gemini-1.5-pro',
+        'gemini-pro',
+        'models/gemini-1.5-flash-latest',
+        'models/gemini-1.5-flash',
+        'models/gemini-pro',
+    ]
+    
+    for model_name in candidate_models:
+        try:
+            print(f"  試行中: {model_name}...", flush=True)
+            test_model = genai.GenerativeModel(model_name)
+            
+            # 簡単なテスト
+            response = test_model.generate_content("こんにちは")
+            
+            print(f"  ✅ 成功: {model_name} が利用可能です!", flush=True)
+            return test_model, model_name
+            
+        except Exception as e:
+            error_msg = str(e)
+            if '404' in error_msg:
+                print(f"  ❌ {model_name} は見つかりません", flush=True)
+            else:
+                print(f"  ⚠ {model_name} でエラー: {e}", flush=True)
+            continue
+    
+    raise Exception("利用可能なGeminiモデルが見つかりませんでした")
+
+
 class BakenamiVideoGenerator:
     """朝ドラ「ばけばけ」動画生成クラス"""
     
@@ -168,9 +207,11 @@ class BakenamiVideoGenerator:
         print("\n🤖 Gemini API設定開始...", flush=True)
         try:
             genai.configure(api_key=GEMINI_API_KEY)
-            # ✅ 修正: 正しいモデル名を使用
-            self.model = genai.GenerativeModel('gemini-1.5-flash')
-            print("✅ Gemini API設定成功 (モデル: gemini-1.5-flash)", flush=True)
+            
+            # ✅ 修正: 動作するモデルを自動検索
+            self.model, self.model_name = find_working_model()
+            print(f"✅ Gemini API設定成功 (モデル: {self.model_name})", flush=True)
+            
         except Exception as e:
             print(f"❌ Gemini API設定失敗: {e}", flush=True)
             import traceback
