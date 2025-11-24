@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 朝ドラ「ばけばけ」ネット反応動画自動生成システム
-毎朝9時に実行して、ネット反応をまとめた3分動画を生成
+毎朝9時に実行して、ネット反応をまとめた
 """
 import os
 import json
@@ -168,8 +168,9 @@ class BakenamiVideoGenerator:
         print("\n🤖 Gemini API設定開始...", flush=True)
         try:
             genai.configure(api_key=GEMINI_API_KEY)
-            self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
-            print("✅ Gemini API設定成功", flush=True)
+            # ✅ ここを変更！gemini-1.5-flashに変更
+            self.model = genai.GenerativeModel('gemini-1.5-flash')
+            print("✅ Gemini API設定成功 (モデル: gemini-1.5-flash)", flush=True)
         except Exception as e:
             print(f"❌ Gemini API設定失敗: {e}", flush=True)
             import traceback
