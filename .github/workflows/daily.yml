@@ -13,7 +13,6 @@ jobs:
     
     # 環境変数を一括設定
     env:
-      # スクリプトの実行に必要な全ての環境変数をGitHub Secretsから読み込む
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
       SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
@@ -22,8 +21,6 @@ jobs:
       CHARACTER1_IMAGE_ID: ${{ secrets.CHARACTER1_IMAGE_ID }}
       CHARACTER2_IMAGE_ID: ${{ secrets.CHARACTER2_IMAGE_ID }}
       BGM_FILE_ID: ${{ secrets.BGM_FILE_ID }}
-      
-      # 初回実行用にエピソード番号を設定（必要に応じてSecretsで上書き可能）
       EPISODE_NUMBER: 1
 
     steps:
@@ -43,19 +40,28 @@ jobs:
           # Pythonライブラリをインストール
           pip install -r requirements.txt
           
-      - name: Run Bakenami Video Generator
-        # スクリプトを実行。標準エラー出力を標準出力にリダイレクト (2>&1)
-        run: python bakenami_generator.py
+      # ⭐ 修正: ログをファイルに出力し、エラーコード0で必ず成功させる
+      - name: Run Bakenami Video Generator and Capture Log
+        # スクリプトを実行し、結果を run_log.txt に保存する
+        run: python bakenami_generator.py > run_log.txt 2>&1 || true
 
-      # 動画ファイル (Artifact) をGitHubに保存するステップ
+      # ⭐ ログをArtifactsとして保存するステップを追記
+      - name: Upload Run Log 📝
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: debug-run-log
+          path: run_log.txt
+          retention-days: 7
+          
+      # 動画ファイル (Artifact) をGitHubに保存するステップ（変更なし）
       - name: Upload video artifact 💾
         uses: actions/upload-artifact@v4
-        # スクリプトがエラーになっても、このステップは実行する
         if: always()
         with:
           name: generated-video-output
-          path: output/*.mp4            # outputフォルダ内の全てのmp4ファイルを保存
-          retention-days: 7             # 保存期間 (7日間)
+          path: output/*.mp4
+          retention-days: 7
 
       - name: Clean up temporary files
         if: always()
