@@ -29,20 +29,37 @@ jobs:
         with:
           python-version: '3.x'
 
+      # ⭐ 修正: python3-dev を追加し、pydubのエラー (audioop/pyaudioop) を解消します
       - name: Install dependencies (incl. ffmpeg, gtts, pydub)
         run: |
-          # 動画生成に必要なFFmpegをインストール
+          # 動画生成に必要なFFmpegとpydubの依存関係をインストール
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg python3-dev
           # Pythonライブラリをインストール
           pip install -r requirements.txt
           
-      # ⭐ 修正箇所: ログファイルへの出力をやめ、エラーを直接Actionsログに表示させる
-      - name: Run Bakenami Video Generator and Display Output
-        run: python bakenami_generator.py
+      # ⭐ ログを run_log.txt に出力し、失敗しても次のステップに進めるようにします
+      - name: Run Bakenami Video Generator and Capture Log
+        run: python bakenami_generator.py > run_log.txt 2>&1 || true
 
-      # ⭐ ログファイルと動画ファイルのArtifactsアップロードステップは一時的に削除しました（デバッグ優先のため）
-      
+      # ⭐ 復元: スクリプトの実行ログを保存
+      - name: Upload Run Log 📝
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: debug-run-log
+          path: run_log.txt
+          retention-days: 7
+          
+      # ⭐ 復元: 作成された動画ファイルを保存 (これがないと動画が消えます)
+      - name: Upload video artifact 💾
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: generated-video-output
+          path: output/*.mp4
+          retention-days: 7
+
       - name: Clean up temporary files
         if: always()
         run: |
