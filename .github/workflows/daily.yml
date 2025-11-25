@@ -1,65 +1,54 @@
-name: Bakenami Video Daily Generation
+name: Video Generation
 
 on:
-  schedule:
-    - cron: '0 0 * * *'
   workflow_dispatch:
+  schedule:
+    - cron: '0 1 * * *' # 毎日午前1時 (UTC) に実行
 
 jobs:
   generate-video:
     runs-on: ubuntu-latest
-    
-    env:
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
-      SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
-      YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
-      BACKGROUND_IMAGE_ID: ${{ secrets.BACKGROUND_IMAGE_ID }}
-      CHARACTER1_IMAGE_ID: ${{ secrets.CHARACTER1_IMAGE_ID }}
-      CHARACTER2_IMAGE_ID: ${{ secrets.CHARACTER2_IMAGE_ID }}
-      BGM_FILE_ID: ${{ secrets.BGM_FILE_ID }}
-      EPISODE_NUMBER: 1
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      # Pythonのバージョンを3.11に固定し、キャッシュキーを更新
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: '3.11'
+          cache: 'pip'
+          # キャッシュをクリアするための新しいキー
+          cache-key: '3.11-v2' 
 
-      # ⭐ 修正箇所: ffmpegのインストールに python3-dev を追加しています
-      - name: Install dependencies (incl. ffmpeg, gtts, pydub)
+      - name: Install dependencies
         run: |
           # 動画生成に必要なFFmpegとpydubの依存関係をインストール
           sudo apt-get update
           sudo apt-get install -y ffmpeg python3-dev
           # Pythonライブラリをインストール
           pip install -r requirements.txt
-          
-      - name: Run Bakenami Video Generator and Capture Log
-        run: python bakenami_generator.py > run_log.txt 2>&1 || true
+        env:
+          # 以下はSecretsから取得される環境変数
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
+          YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
+          BACKGROUND_IMAGE_ID: ${{ secrets.BACKGROUND_IMAGE_ID }}
+          CHARACTER1_IMAGE_ID: ${{ secrets.CHARACTER1_IMAGE_ID }}
+          CHARACTER2_IMAGE_ID: ${{ secrets.CHARACTER2_IMAGE_ID }}
+          BGM_FILE_ID: ${{ secrets.BGM_FILE_ID }}
+          EPISODE_NUMBER: 1
 
-      - name: Upload Run Log 📝
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: debug-run-log
-          path: run_log.txt
-          retention-days: 7
-          
-      - name: Upload video artifact 💾
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: generated-video-output
-          path: output/*.mp4
-          retention-days: 7
-
-      - name: Clean up temporary files
-        if: always()
-        run: |
-          echo "Cleaning up temp directories..."
-          rm -rf output
-          rm -rf temp
+      - name: Run video generation script
+        run: python main.py
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
+          YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
+          BACKGROUND_IMAGE_ID: ${{ secrets.BACKGROUND_IMAGE_ID }}
+          CHARACTER1_IMAGE_ID: ${{ secrets.CHARACTER1_IMAGE_ID }}
+          CHARACTER2_IMAGE_ID: ${{ secrets.CHARACTER2_IMAGE_ID }}
+          BGM_FILE_ID: ${{ secrets.BGM_FILE_ID }}
+          EPISODE_NUMBER: 1
