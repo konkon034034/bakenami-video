@@ -27,7 +27,7 @@ jobs:
           # Pythonライブラリをインストール
           pip install -r requirements.txt
         env:
-          # すべての環境変数をここに統合します
+          # すべての環境変数をここに統合しました
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
           SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
@@ -44,4 +44,4 @@ jobs:
         
       - name: Run video generation script
         run: python main.py
-        # ★★ 注意: ここにあった env: ブロックを削除しました ★★
+        # ★★ 注意: 実行時に環境変数は自動で引き継がれます ★★
