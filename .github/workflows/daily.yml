@@ -12,7 +12,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Pythonのバージョンを3.11に固定
+      # Pythonのバージョンを3.11に固定 (v5アクションを使用)
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -38,7 +38,7 @@ jobs:
           BGM_FILE_ID: ${{ secrets.BGM_FILE_ID }}
           EPISODE_NUMBER: 1
 
-      # ★★★ このデバッグステップを追加してください ★★★
+      # ★★★ 新たに追加したデバッグステップ ★★★
       - name: Debug: List files
         run: ls -F
         
