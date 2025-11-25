@@ -1,3 +1,4 @@
+
 name: Video Generation
 
 on:
@@ -54,3 +55,7 @@ jobs:
           CHARACTER2_IMAGE_ID: ${{ secrets.CHARACTER2_IMAGE_ID }}
           BGM_FILE_ID: ${{ secrets.BGM_FILE_ID }}
           EPISODE_NUMBER: 1
+on:
+... (YAMLコード本体) ...
+BGM_FILE_ID: ${{ secrets.BGM_FILE_ID }}
+EPISODE_NUMBER: 1
