@@ -1,34 +1,47 @@
-  # Pythonのバージョンを3.11に固定 (v5アクションを使用)  
-  - name: Set up Python 3.11  
-    uses: actions/setup-python@v5  
-    with:  
-      python-version: '3.11'  
-      cache: 'pip'  # キャッシュを有効化  
+name: Daily Video Generation
 
-  - name: Install dependencies  
-    run: |  
-      # 動画生成に必要なFFmpegとpydubの依存関係をインストール  
-      sudo apt-get update  
-      sudo apt-get install -y ffmpeg python3-dev  
-      # Pythonライブラリをインストール  
-      pip install -r requirements.txt  
-    env:  
-      # すべての環境変数をここに統合しました  
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}  
-      GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}  
-      SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}  
-      YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}  
-      BACKGROUND_IMAGE_ID: ${{ secrets.BACKGROUND_IMAGE_ID }}  
-      CHARACTER1_IMAGE_ID: ${{ secrets.CHARACTER1_IMAGE_ID }}  
-      CHARACTER2_IMAGE_ID: ${{ secrets.CHARACTER2_IMAGE_ID }}  
-      BGM_FILE_ID: ${{ secrets.BGM_FILE_ID }}  
-      EPISODE_NUMBER: 1  
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 1 * * *' # 毎日午前1時 (UTC) に実行
 
-  # ★★★ main.pyの場所をデバッグするためのステップ ★★★  
-  - name: Debug: List files  
-    run: ls -F  
-    # Check failure on line 42 in .github/workflows/bakenami-video.yml  
-
-  - name: Run video generation script  
-    run: python main.py  
-    # ★★ 注意: 実行時に環境変数は自動で引き継がれます ★★
+jobs:
+  generate-video:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      # Pythonのバージョンを3.11に固定 (v5アクションを使用)
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'  # キャッシュを有効化
+      
+      - name: Install dependencies
+        run: |
+          # 動画生成に必要なFFmpegとpydubの依存関係をインストール
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg python3-dev
+          # Pythonライブラリをインストール
+          pip install -r requirements.txt
+        env:
+          # すべての環境変数をここに統合しました
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
+          YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
+          BACKGROUND_IMAGE_ID: ${{ secrets.BACKGROUND_IMAGE_ID }}
+          CHARACTER1_IMAGE_ID: ${{ secrets.CHARACTER1_IMAGE_ID }}
+          CHARACTER2_IMAGE_ID: ${{ secrets.CHARACTER2_IMAGE_ID }}
+          BGM_FILE_ID: ${{ secrets.BGM_FILE_ID }}
+          EPISODE_NUMBER: 1
+      
+      # ★★★ main.pyの場所をデバッグするためのステップ ★★★
+      - name: Debug: List files
+        run: ls -F
+      
+      - name: Run video generation script
+        run: python main.py
+        # ★★ 注意: 実行時に環境変数は自動で引き継がれます ★★
