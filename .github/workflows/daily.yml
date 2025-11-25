@@ -38,7 +38,7 @@ jobs:
           BGM_FILE_ID: ${{ secrets.BGM_FILE_ID }}
           EPISODE_NUMBER: 1
 
-      # ★★★ 新たに追加したデバッグステップ ★★★
+      # ★★★ main.pyの場所をデバッグするためのステップ ★★★
       - name: Debug: List files
         run: ls -F
         
