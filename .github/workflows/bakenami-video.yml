@@ -44,3 +44,4 @@ jobs:
       
       - name: Run video generation script
         run: python main.py
+        # ★★ 注意: 実行時に環境変数は自動で引き継がれます ★★
