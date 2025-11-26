@@ -37,6 +37,8 @@ jobs:
           CHARACTER1_IMAGE_ID: ${{ secrets.CHARACTER1_IMAGE_ID }}
           CHARACTER2_IMAGE_ID: ${{ secrets.CHARACTER2_IMAGE_ID }}
           BGM_FILE_ID: ${{ secrets.BGM_FILE_ID }}
+          GOOGLE_CSE_ID: ${{ secrets.GOOGLE_CSE_ID }}
+          GOOGLE_CSE_API_KEY: ${{ secrets.GOOGLE_CSE_API_KEY }}
           EPISODE_NUMBER: 1
       
       - name: Upload video artifact
