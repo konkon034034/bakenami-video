@@ -46,6 +46,10 @@ CHARACTER2_IMAGE_ID = os.environ.get('CHARACTER2_IMAGE_ID')
 BGM_FILE_ID = os.environ.get('BGM_FILE_ID')
 EPISODE_NUMBER = int(os.environ.get('EPISODE_NUMBER', '1'))
 
+# Google Custom Search API設定
+GOOGLE_CSE_API_KEY = os.environ.get('GOOGLE_CSE_API_KEY', GEMINI_API_KEY)  # 未設定の場合はGEMINI_API_KEYを使用
+GOOGLE_CSE_ID = os.environ.get('GOOGLE_CSE_ID')
+
 # キャラクター設定（デフォルト値）
 CHARACTER1_NAME = "ソウタ"
 CHARACTER2_NAME = "ハルト"
@@ -236,6 +240,172 @@ def search_reactions():
     
     print(f"✅ 感想を取得しました:\n{reactions}")
     return reactions
+
+
+def search_reactions_from_sns(query=None):
+    """
+    Google Custom Search APIを使ってTwitter/Xから感想を検索
+    """
+    print("🔍 SNSから感想を検索中...")
+
+    if not GOOGLE_CSE_ID:
+        print("⚠️ GOOGLE_CSE_IDが設定されていません。デフォルトの検索を使用します。")
+        return search_reactions()
+
+    if not GOOGLE_CSE_API_KEY:
+        print("⚠️ GOOGLE_CSE_API_KEYが設定されていません。デフォルトの検索を使用します。")
+        return search_reactions()
+
+    try:
+        # Custom Search API service を構築
+        service = build('customsearch', 'v1', developerKey=GOOGLE_CSE_API_KEY)
+
+        # 検索クエリを構築
+        if query is None:
+            query = f"{PROGRAM_NAME} 第{EPISODE_NUMBER}話"
+
+        print(f"  検索キーワード: {query}")
+
+        # twitter.com と x.com から検索
+        all_results = []
+
+        for site in ['twitter.com', 'x.com']:
+            print(f"  {site} を検索中...")
+
+            # 検索実行
+            result = service.cse().list(
+                q=query,
+                cx=GOOGLE_CSE_ID,
+                num=10,  # 各サイトから10件取得
+                siteSearch=site,
+                siteSearchFilter='i'  # 指定サイトのみ
+            ).execute()
+
+            # 結果を取得
+            if 'items' in result:
+                for item in result['items']:
+                    all_results.append({
+                        'title': item.get('title', ''),
+                        'snippet': item.get('snippet', ''),
+                        'link': item.get('link', '')
+                    })
+                print(f"    ✅ {len(result['items'])}件取得")
+            else:
+                print(f"    ℹ️ 検索結果がありませんでした")
+
+        print(f"✅ 合計 {len(all_results)} 件の検索結果を取得しました")
+
+        return all_results
+
+    except Exception as e:
+        print(f"⚠️ SNS検索エラー: {e}")
+        print(f"  デフォルトの検索方法を使用します")
+        return search_reactions()
+
+
+def analyze_and_select_reactions(search_results):
+    """
+    Gemini APIを使って検索結果を分析し、重要度の高い感想を5つ選ぶ
+    """
+    print("🤖 Gemini APIで感想を分析中...")
+
+    # 検索結果をテキストにまとめる
+    if isinstance(search_results, str):
+        # 既存の search_reactions() の結果の場合
+        return search_results
+
+    results_text = ""
+    for i, result in enumerate(search_results, 1):
+        results_text += f"{i}. {result['title']}\n"
+        results_text += f"   {result['snippet']}\n"
+        results_text += f"   URL: {result['link']}\n\n"
+
+    # Gemini API設定
+    genai.configure(api_key=GEMINI_API_KEY)
+    model = genai.GenerativeModel('models/gemini-2.5-flash')
+
+    # 分析プロンプト
+    prompt = f"""
+以下は朝ドラ「{PROGRAM_NAME}」の第{EPISODE_NUMBER}話に関するSNS（Twitter/X）の検索結果です。
+
+【検索結果】
+{results_text}
+
+【タスク】
+これらの検索結果から、以下の基準で重要度の高い感想を5つ選んでください：
+1. 番組の内容に具体的に言及している
+2. 視聴者の感情や意見が明確に表れている
+3. 他の視聴者が共感しそうな内容
+4. ストーリーやキャラクターへの深い洞察がある
+5. ポジティブまたはネガティブな強い感情表現がある
+
+【出力形式】
+選んだ5つの感想を以下の形式で出力してください：
+
+1. （感想の要約）
+   出典: （URL）
+
+2. （感想の要約）
+   出典: （URL）
+
+3. （感想の要約）
+   出典: （URL）
+
+4. （感想の要約）
+   出典: （URL）
+
+5. （感想の要約）
+   出典: （URL）
+
+※感想は自然な日本語で、会話に使いやすい形に要約してください。
+"""
+
+    response = model.generate_content(prompt)
+    selected_reactions = response.text
+
+    print(f"✅ 重要な感想を5つ選択しました:\n{selected_reactions}")
+
+    return selected_reactions
+
+
+def save_reactions_to_spreadsheet(reactions, search_results=None):
+    """
+    選択された感想をスプレッドシートに保存
+    """
+    print("📊 感想をスプレッドシートに保存中...")
+
+    try:
+        credentials = service_account.Credentials.from_service_account_file(
+            os.environ['GOOGLE_APPLICATION_CREDENTIALS'],
+            scopes=['https://www.googleapis.com/auth/spreadsheets']
+        )
+        gc = gspread.authorize(credentials)
+        spreadsheet = gc.open_by_key(SPREADSHEET_ID)
+
+        # 「SNS検索結果」シートを開く（なければ作成）
+        try:
+            reactions_sheet = spreadsheet.worksheet('SNS検索結果')
+        except:
+            reactions_sheet = spreadsheet.add_worksheet(title='SNS検索結果', rows=100, cols=10)
+            # ヘッダーを追加
+            reactions_sheet.append_row(['日時', 'エピソード番号', '番組名', '選択された感想', '検索結果件数'])
+
+        # データを追加
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        result_count = len(search_results) if search_results and isinstance(search_results, list) else 0
+
+        reactions_sheet.append_row([
+            timestamp,
+            EPISODE_NUMBER,
+            PROGRAM_NAME,
+            reactions,
+            result_count
+        ])
+
+        print("✅ スプレッドシートに保存しました")
+
+    except Exception as e:
+        print(f"⚠️ スプレッドシート保存エラー: {e}")
 
 
 # ========================================
@@ -586,20 +756,26 @@ def main():
         load_config_from_spreadsheet()
         
         print(f"📺 エピソード: 第{EPISODE_NUMBER}話")
-        
-        # 3. 感想を検索
-        reactions = search_reactions()
-        
-        # 3. 会話スクリプト生成
+
+        # 3. SNSから感想を検索
+        search_results = search_reactions_from_sns()
+
+        # 4. Gemini APIで感想を分析して重要なものを5つ選択
+        reactions = analyze_and_select_reactions(search_results)
+
+        # 5. 選択された感想をスプレッドシートに保存
+        save_reactions_to_spreadsheet(reactions, search_results)
+
+        # 6. 会話スクリプト生成
         script = generate_script(reactions)
-        
-        # 4. 音声生成
+
+        # 7. 音声生成
         audio_files = generate_audio(script)
-        
-        # 5. 動画生成
+
+        # 8. 動画生成
         video_path = create_video(audio_files)
-        
-        # 6. YouTubeにアップロード（一旦スキップ）
+
+        # 9. YouTubeにアップロード（一旦スキップ）
         print("⏩ YouTubeアップロードはスキップします")
         # video_url = upload_to_youtube(video_path)
         
